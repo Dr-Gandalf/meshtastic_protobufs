@@ -37,8 +37,10 @@ message Config {
 
       /*
        * Description: Combination of both ROUTER and CLIENT. Not for mobile devices.
+       * Deprecated in v2.3.15 because improper usage is impacting public meshes: Use ROUTER or CLIENT instead.
        */
-      ROUTER_CLIENT = 3;
+      
+      ROUTER_CLIENT = 3 [deprecated = true];
 
       /*
        * Description: Infrastructure node for extending network coverage by relaying messages with minimal overhead. Not visible in Nodes list.
@@ -133,14 +135,9 @@ message Config {
 
     /*
      * Disabling this will disable the SerialConsole by not initilizing the StreamAPI
+     * Moved to SecurityConfig
      */
-    bool serial_enabled = 2;
-
-    /*
-     * By default we turn off logging as soon as an API client connects (to keep shared serial link quiet).
-     * Set this to true to leave the debug log outputting even when API is active.
-     */
-    bool debug_log_enabled = 3;
+    bool serial_enabled = 2[deprecated = true];
 
     /*
      * For boards without a hard wired button, this is the pin number that will be used
@@ -173,8 +170,9 @@ message Config {
     /*
      * If true, device is considered to be "managed" by a mesh administrator
      * Clients should then limit available configuration and administrative options inside the user interface
+     * Moved to SecurityConfig
      */
-    bool is_managed = 9;
+    bool is_managed = 9[deprecated = true];
 
     /*
      * Disables the triple-press of user button to enable or disable GPS
@@ -409,6 +407,12 @@ message Config {
      * I2C address of INA_2XX to use for reading device battery voltage
      */
     uint32 device_battery_ina_address = 9;
+
+    /*
+     * If non-zero, we want powermon log outputs.  With the particular (bitfield) sources enabled.
+     * Note: we picked an ID of 32 so that lower more efficient IDs can be used for more frequently used options.
+     */
+     uint64 powermon_enables = 32;    
   }
 
   /*
@@ -650,6 +654,53 @@ message Config {
      * Should we wake the screen up on accelerometer detected motion or tap
      */
     bool wake_on_tap_or_motion = 10;
+
+    enum CompassOrientation {
+      /*
+       * The compass and the display are in the same orientation.
+       */
+      DEGREES_0 = 0;
+
+      /*
+       * Rotate the compass by 90 degrees.
+       */
+      DEGREES_90 = 1;
+
+      /*
+       * Rotate the compass by 180 degrees.
+       */
+      DEGREES_180 = 2;
+
+      /*
+       * Rotate the compass by 270 degrees.
+       */
+      DEGREES_270 = 3;
+
+      /*
+       * Don't rotate the compass, but invert the result.
+       */
+      DEGREES_0_INVERTED = 4;
+
+      /*
+       * Rotate the compass by 90 degrees and invert.
+       */
+      DEGREES_90_INVERTED = 5;
+
+      /*
+       * Rotate the compass by 180 degrees and invert.
+       */
+      DEGREES_180_INVERTED = 6;
+
+      /*
+       * Rotate the compass by 270 degrees and invert.
+       */
+      DEGREES_270_INVERTED = 7;
+      }
+
+    /*
+     * Indicates how to rotate or invert the compass output to accurate display on the display.
+     */
+    CompassOrientation compass_orientation = 11;
   }
 
   /*
@@ -770,8 +821,9 @@ message Config {
 
       /*
        * Very Long Range - Slow
+       * Deprecated in 2.5: Works only with txco and is unusably slow
        */
-      VERY_LONG_SLOW = 2;
+      VERY_LONG_SLOW = 2 [deprecated = true];
 
       /*
        * Medium Range - Slow
@@ -797,6 +849,13 @@ message Config {
        * Long Range - Moderately Fast
        */
       LONG_MODERATE = 7;
+
+      /*
+       * Short Range - Turbo
+       * This is the fastest preset and the only one with 500kHz bandwidth.
+       * It is not legal to use in all regions due to this wider bandwidth.
+       */
+      SHORT_TURBO = 8;
     }
 
     /*
@@ -899,6 +958,11 @@ message Config {
     float override_frequency = 14;
 
     /*
+     * If true, disable the build-in PA FAN using pin define in RF95_FAN_EN.
+     */
+    bool pa_fan_disabled = 15;
+
+    /*
      * For testing it is useful sometimes to force a node to never listen to
      * particular other nodes (simulating radio out of range). All nodenums listed
      * in ignore_incoming will have packets they send dropped on receive (by router.cpp)
@@ -909,6 +973,11 @@ message Config {
      * If true, the device will not process any packets received via LoRa that passed via MQTT anywhere on the path towards it.
      */
     bool ignore_mqtt = 104;
+
+    /*
+     * Sets the ok_to_mqtt bit on outgoing packets
+     */
+    bool config_ok_to_mqtt = 105;
   }
 
   message BluetoothConfig {
@@ -945,6 +1014,53 @@ message Config {
     uint32 fixed_pin = 3;
   }
 
+  message SecurityConfig {
+
+  /*
+   * The public key of the user's device.
+   * Sent out to other nodes on the mesh to allow them to compute a shared secret key.
+   */
+    bytes public_key = 1;
+
+  /*
+   * The private key of the device.
+   * Used to create a shared key with a remote device.
+   */
+    bytes private_key = 2;
+
+    /*
+     * The public key authorized to send admin messages to this node.
+     */
+    repeated bytes admin_key = 3;
+
+    /*
+     * If true, device is considered to be "managed" by a mesh administrator via admin messages
+     * Device is managed by a mesh administrator.
+     */
+    bool is_managed = 4;
+
+    /*
+     * Serial Console over the Stream API."
+     */
+    bool serial_enabled = 5;
+
+    /*
+     * By default we turn off logging as soon as an API client connects (to keep shared serial link quiet).
+     * Output live debug logging over serial or bluetooth is set to true.
+     */
+    bool debug_log_api_enabled = 6;
+
+    /*
+     * Allow incoming device control over the insecure legacy admin channel.
+     */
+    bool admin_channel_enabled = 8;
+  }
+
+  /*
+   * Blank config request, strictly for getting the session key
+   */
+  message SessionkeyConfig {}
+
   /*
    * Payload Variant
    */
@@ -956,5 +1072,7 @@ message Config {
     DisplayConfig display = 5;
     LoRaConfig lora = 6;
     BluetoothConfig bluetooth = 7;
+    SecurityConfig security = 8;
+    SessionkeyConfig sessionkey = 9;
   }
 }
